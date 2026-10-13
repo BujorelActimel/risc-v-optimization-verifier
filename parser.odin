@@ -177,10 +177,14 @@ parse_file :: proc(file_name: string) -> []Instr {
 
 		if colon := strings.index(l, ":"); colon >= 0 {
 			label := strings.trim_space(l[:colon])
-			labels[label] = instr_idx
-			l = strings.trim_space(l[colon+1:])
-			if l == "" do continue
+			if !strings.contains(label, " ") && !strings.contains(label, "\"") {
+				labels[label] = instr_idx
+				l = strings.trim_space(l[colon+1:])
+				if l == "" do continue
+			}
 		}
+
+		if dot := strings.index(l, "."); dot >= 0 do continue
 
 		append(&clean_lines, l)
 		instr_idx += 1
@@ -263,6 +267,8 @@ parse_file :: proc(file_name: string) -> []Instr {
 
 		append(&instrs, instr)
 	}
+
+	fmt.println(labels)
 
 	return instrs[:]
 }
