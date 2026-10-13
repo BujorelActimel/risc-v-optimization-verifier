@@ -32,5 +32,7 @@ func_name:
 ```
 
 [**13-10-2026**] - It turns out that those instructions that are outside the ISA are [pseudo-instructions](https://github.com/riscv-non-isa/riscv-asm-manual/blob/main/src/asm-manual.adoc#pseudoinstructions) emited by the compiler and are translated by the assembler to the real instructions. And the reason is that these pseudo-instructions are easier to understand / are more readable for programmers.  
-And sure, I can understand, but from a 30-something instruction set I now have to support quite a few more instructions if I want to be accurate and not fuck around with the output emmited by the compiler every time.  
+
+And sure, I can understand, but from a 30-something instruction set I now have to support quite a few more instructions if I want to be accurate and not fuck around with the output emmited by the compiler every time. 
+ 
 That being said, I have to fuck around with the output regardless, if I want to have the format that I specified yesterday. I could just selectively support some of the pseudo-instructions that appear more often, but I have this stupid sense of supporting everything, otherwise I feel like it's 'fake'.
