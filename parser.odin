@@ -153,6 +153,121 @@ parse_mem :: proc(s: string) -> (imm: i32, rs1: Reg, ok: bool) {
 	return
 }
 
+expand_pseudo :: proc(fields: []string) -> (Instr, bool) {
+	if len(fields) == 0 do return {}, false
+	switch fields[0] {
+	case "mv": // mv rd, rs -> addi rd, rs, 0
+		if len(fields) < 3 do return {}, false
+		rd,  ok1 := parse_reg(fields[1])
+		rs1, ok2 := parse_reg(fields[2])
+		if !ok1 || !ok2 do return {}, false
+		return Instr{op = .ADDI, rd = rd, rs1 = rs1, imm = 0}, true
+
+	case "jr": // jr rs -> jalr x0, 0(rs)
+		if len(fields) < 2 do return {}, false
+		rs1, ok := parse_reg(fields[1])
+		if !ok do return {}, false
+		return Instr{op = .JALR, rd = 0, rs1 = rs1, imm = 0}, true
+
+	case "ret": // ret -> jalr x0, 0(ra)
+		return Instr{op = .JALR, rd = 0, rs1 = 1, imm = 0}, true
+
+	case "nop": // nop -> addi x0, x0, 0
+		return Instr{op = .ADDI, rd = 0, rs1 = 0, imm = 0}, true
+
+	case "not": // not rd, rs -> xori rd, rs, -1
+		if len(fields) < 3 do return {}, false
+		rd,  ok1 := parse_reg(fields[1])
+		rs1, ok2 := parse_reg(fields[2])
+		if !ok1 || !ok2 do return {}, false
+		return Instr{op = .XORI, rd = rd, rs1 = rs1, imm = -1}, true
+
+	case "neg": // neg rd, rs -> sub rd, x0, rs
+		if len(fields) < 3 do return {}, false
+		rd,  ok1 := parse_reg(fields[1])
+		rs2, ok2 := parse_reg(fields[2])
+		if !ok1 || !ok2 do return {}, false
+		return Instr{op = .SUB, rd = rd, rs1 = 0, rs2 = rs2}, true
+
+	case "seqz": // seqz rd, rs -> sltiu rd, rs, 1
+		if len(fields) < 3 do return {}, false
+		rd,  ok1 := parse_reg(fields[1])
+		rs1, ok2 := parse_reg(fields[2])
+		if !ok1 || !ok2 do return {}, false
+		return Instr{op = .SLTIU, rd = rd, rs1 = rs1, imm = 1}, true
+
+	case "snez": // snez rd, rs -> sltu rd, x0, rs
+		if len(fields) < 3 do return {}, false
+		rd,  ok1 := parse_reg(fields[1])
+		rs2, ok2 := parse_reg(fields[2])
+		if !ok1 || !ok2 do return {}, false
+		return Instr{op = .SLTU, rd = rd, rs1 = 0, rs2 = rs2}, true
+
+	case "sltz": // sltz rd, rs -> slt rd, rs, x0
+		if len(fields) < 3 do return {}, false
+		rd,  ok1 := parse_reg(fields[1])
+		rs1, ok2 := parse_reg(fields[2])
+		if !ok1 || !ok2 do return {}, false
+		return Instr{op = .SLT, rd = rd, rs1 = rs1, rs2 = 0}, true
+
+	case "sgtz": // sgtz rd, rs -> slt rd, x0, rs
+		if len(fields) < 3 do return {}, false
+		rd,  ok1 := parse_reg(fields[1])
+		rs2, ok2 := parse_reg(fields[2])
+		if !ok1 || !ok2 do return {}, false
+		return Instr{op = .SLT, rd = rd, rs1 = 0, rs2 = rs2}, true
+
+	case "j": // j offset -> jal x0, offset
+		if len(fields) < 2 do return {}, false
+		imm, ok := parse_imm(fields[1])
+		if !ok do return {}, false
+		return Instr{op = .JAL, rd = 0, imm = imm}, true
+
+	case "beqz": // beqz rs, offset -> beq rs, x0, offset
+		if len(fields) < 3 do return {}, false
+		rs1, ok1 := parse_reg(fields[1])
+		imm, ok2 := parse_imm(fields[2])
+		if !ok1 || !ok2 do return {}, false
+		return Instr{op = .BEQ, rs1 = rs1, rs2 = 0, imm = imm}, true
+
+	case "bnez": // bnez rs, offset -> bne rs, x0, offset
+		if len(fields) < 3 do return {}, false
+		rs1, ok1 := parse_reg(fields[1])
+		imm, ok2 := parse_imm(fields[2])
+		if !ok1 || !ok2 do return {}, false
+		return Instr{op = .BNE, rs1 = rs1, rs2 = 0, imm = imm}, true
+
+	case "bgez": // bgez rs, offset -> bge rs, x0, offset
+		if len(fields) < 3 do return {}, false
+		rs1, ok1 := parse_reg(fields[1])
+		imm, ok2 := parse_imm(fields[2])
+		if !ok1 || !ok2 do return {}, false
+		return Instr{op = .BGE, rs1 = rs1, rs2 = 0, imm = imm}, true
+
+	case "bltz": // bltz rs, offset -> blt rs, x0, offset
+		if len(fields) < 3 do return {}, false
+		rs1, ok1 := parse_reg(fields[1])
+		imm, ok2 := parse_imm(fields[2])
+		if !ok1 || !ok2 do return {}, false
+		return Instr{op = .BLT, rs1 = rs1, rs2 = 0, imm = imm}, true
+
+	case "blez": // blez rs, offset -> bge x0, rs, offset
+		if len(fields) < 3 do return {}, false
+		rs1, ok1 := parse_reg(fields[1])
+		imm, ok2 := parse_imm(fields[2])
+		if !ok1 || !ok2 do return {}, false
+		return Instr{op = .BGE, rs1 = 0, rs2 = rs1, imm = imm}, true
+
+	case "bgtz": // bgtz rs, offset -> blt x0, rs, offset
+		if len(fields) < 3 do return {}, false
+		rs1, ok1 := parse_reg(fields[1])
+		imm, ok2 := parse_imm(fields[2])
+		if !ok1 || !ok2 do return {}, false
+		return Instr{op = .BLT, rs1 = 0, rs2 = rs1, imm = imm}, true
+	}
+	return {}, false
+}
+
 parse_file :: proc(file_name: string) -> []Instr {
 	data, err := os.read_entire_file_from_path(file_name, context.allocator)
 	if err != nil {
@@ -200,7 +315,12 @@ parse_file :: proc(file_name: string) -> []Instr {
 
 		entry, found := INSTR_TABLE[fields[0]]
 		if !found {
-			fmt.eprintfln("unknown instruction: %s", fields[0])
+			instr, ok := expand_pseudo(fields)
+			if ok {
+				append(&instrs, instr)
+			} else {
+				fmt.eprintfln("unknown instruction: %s", fields[0])
+			}
 			continue
 		}
 
